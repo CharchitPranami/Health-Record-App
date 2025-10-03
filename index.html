@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#2D7D46">
+  <meta name="description" content="Offline-first health records for rural healthcare workers">
+  <title>Health Records PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232D7D46'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Onboarding Screen -->
+  <div id="onboarding-screen" class="screen active">
+    <div class="container">
+      <div class="hero">
+        <svg class="hero-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
+        </svg>
+        <h1 class="hero-title">Health Records</h1>
+        <p class="hero-subtitle">Offline-first for rural healthcare workers</p>
+      </div>
+
+      <div class="card">
+        <h2>Login</h2>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="worker-name">Your Name</label>
+            <input type="text" id="worker-name" required placeholder="Enter your name">
+          </div>
+          <div class="form-group">
+            <label for="worker-phone">Phone Number</label>
+            <input type="tel" id="worker-phone" placeholder="Optional">
+          </div>
+          <div class="form-group">
+            <label for="worker-role">Role</label>
+            <select id="worker-role">
+              <option>ASHA Worker</option>
+              <option>PHC Staff</option>
+              <option>ANM</option>
+              <option>Community Health Worker</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="worker-area">Area/Village</label>
+            <input type="text" id="worker-area" placeholder="Your assigned area">
+          </div>
+          <button type="submit" class="btn btn-primary btn-large">Continue</button>
+        </form>
+
+        <div class="voice-test" style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Test Voice Input</h3>
+          <button type="button" id="test-voice-btn" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+            Test Microphone
+          </button>
+          <p id="voice-test-result" style="margin-top: 0.5rem; font-size: 0.875rem; color: #666;"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Screen -->
+  <div id="app-screen" class="screen">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <button id="menu-btn" class="icon-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+      </button>
+      <h1 class="top-bar-title" id="screen-title">Patients</h1>
+      <div class="top-bar-actions">
+        <button id="sync-btn" class="icon-btn" aria-label="Sync">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          <span id="unsynced-badge" class="badge" style="display: none;">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Drawer -->
+    <nav id="nav-drawer" class="nav-drawer">
+      <div class="nav-header">
+        <div class="worker-info">
+          <div class="worker-avatar">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="worker-name" id="nav-worker-name">Worker</div>
+            <div class="worker-role" id="nav-worker-role">ASHA Worker</div>
+          </div>
+        </div>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="#" data-view="patients" class="nav-item active">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+          Patients
+        </a></li>
+        <li><a href="#" data-view="reminders" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+          </svg>
+          Reminders
+          <span id="reminder-count-badge" class="badge" style="display: none;">0</span>
+        </a></li>
+        <li><a href="#" data-view="sync" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          Sync Center
+        </a></li>
+        <li><a href="#" data-view="eligibility" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
+          </svg>
+          Eligibility Check
+        </a></li>
+        <li><a href="#" data-view="settings" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+          Settings
+        </a></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="main-content">
+
+      <!-- Patients View -->
+      <div id="patients-view" class="view active">
+        <div class="search-bar">
+          <input type="search" id="patient-search" placeholder="Search patients..." aria-label="Search patients">
+          <button id="voice-search-btn" class="icon-btn" aria-label="Voice search">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="filters">
+          <select id="gender-filter" aria-label="Filter by gender">
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+          <select id="village-filter" aria-label="Filter by village">
+            <option value="">All Villages</option>
+          </select>
+        </div>
+
+        <div id="patient-list" class="list"></div>
+
+        <button id="add-patient-btn" class="fab" aria-label="Add patient">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Patient Detail View -->
+      <div id="patient-detail-view" class="view">
+        <div class="detail-header">
+          <button id="back-to-patients" class="icon-btn" aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+          </button>
+          <h2 id="patient-detail-name">Patient Name</h2>
+        </div>
+
+        <div class="card">
+          <h3>Basic Information</h3>
+          <dl class="detail-list">
+            <dt>Age</dt><dd id="detail-age">-</dd>
+            <dt>Gender</dt><dd id="detail-gender">-</dd>
+            <dt>Phone</dt><dd id="detail-phone">-</dd>
+            <dt>Village</dt><dd id="detail-village">-</dd>
+            <dt>Blood Group</dt><dd id="detail-blood">-</dd>
+          </dl>
+          <div class="action-buttons">
+            <button id="call-patient-btn" class="btn btn-secondary">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
+              Call
+            </button>
+            <button id="sos-btn" class="btn btn-danger">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+              </svg>
+              SOS
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Medical History</h3>
+          <p id="detail-history" style="white-space: pre-wrap;">-</p>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">Recent Visits</h3>
+            <button id="add-visit-btn" class="btn btn-primary">Add Visit</button>
+          </div>
+          <div id="visit-list" class="list"></div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">Reminders</h3>
+            <button id="add-reminder-btn" class="btn btn-secondary">Set Reminder</button>
+          </div>
+          <div id="patient-reminder-list" class="list"></div>
+        </div>
+      </div>
+
+      <!-- Add/Edit Patient Form -->
+      <div id="patient-form-view" class="view">
+        <div class="detail-header">
+          <button id="cancel-patient-form" class="icon-btn" aria-label="Cancel">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+          <h2>Add Patient</h2>
+        </div>
+
+        <form id="patient-form" class="form-container">
+          <div class="card">
+            <div class="form-group">
+              <label for="patient-name">Name *</label>
+              <div class="input-with-voice">
+                <input type="text" id="patient-name" required>
+                <button type="button" class="voice-btn" data-target="patient-name">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="patient-age">Age</label>
+                <input type="number" id="patient-age" min="0" max="150">
+              </div>
+              <div class="form-group">
+                <label for="patient-gender">Gender</label>
+                <select id="patient-gender">
+                  <option value="">Select</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="patient-phone-form">Phone</label>
+              <input type="tel" id="patient-phone-form">
+            </div>
+
+            <div class="form-group">
+              <label for="patient-village">Village</label>
+              <input type="text" id="patient-village">
+            </div>
+
+            <div class="form-group">
+              <label for="patient-address">Address</label>
+              <div class="input-with-voice">
+                <textarea id="patient-address" rows="2"></textarea>
+                <button type="button" class="voice-btn" data-target="patient-address">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="patient-blood-group">Blood Group</label>
+              <select id="patient-blood-group">
+                <option value="">Select</option>
+                <option>A+</option>
+                <option>A-</option>
+                <option>B+</option>
+                <option>B-</option>
+                <option>AB+</option>
+                <option>AB-</option>
+                <option>O+</option>
+                <option>O-</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="patient-medical-history">Medical History</label>
+              <div class="input-with-voice">
+                <textarea id="patient-medical-history" rows="3"></textarea>
+                <button type="button" class="voice-btn" data-target="patient-medical-history">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large">Save Patient</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Add Visit Form -->
+      <div id="visit-form-view" class="view">
+        <div class="detail-header">
+          <button id="cancel-visit-form" class="icon-btn" aria-label="Cancel">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+          <h2>Add Visit</h2>
+        </div>
+
+        <form id="visit-form" class="form-container">
+          <div class="card">
+            <div class="form-group">
+              <label for="visit-symptoms">Symptoms *</label>
+              <div class="input-with-voice">
+                <textarea id="visit-symptoms" rows="3" required></textarea>
+                <button type="button" class="voice-btn" data-target="visit-symptoms">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <h3>Vitals</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="visit-bp">BP</label>
+                <input type="text" id="visit-bp" placeholder="120/80">
+              </div>
+              <div class="form-group">
+                <label for="visit-temp">Temp (°F)</label>
+                <input type="text" id="visit-temp" placeholder="98.6">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="visit-pulse">Pulse</label>
+                <input type="text" id="visit-pulse" placeholder="72">
+              </div>
+              <div class="form-group">
+                <label for="visit-weight">Weight (kg)</label>
+                <input type="text" id="visit-weight" placeholder="65">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="visit-diagnosis">Diagnosis</label>
+              <div class="input-with-voice">
+                <textarea id="visit-diagnosis" rows="2"></textarea>
+                <button type="button" class="voice-btn" data-target="visit-diagnosis">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="visit-treatment">Treatment</label>
+              <div class="input-with-voice">
+                <textarea id="visit-treatment" rows="2"></textarea>
+                <button type="button" class="voice-btn" data-target="visit-treatment">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="visit-notes">Additional Notes</label>
+              <div class="input-with-voice">
+                <textarea id="visit-notes" rows="2"></textarea>
+                <button type="button" class="voice-btn" data-target="visit-notes">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="visit-followup">Follow-up Date</label>
+              <input type="date" id="visit-followup">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large">Save Visit</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Reminders View -->
+      <div id="reminders-view" class="view">
+        <div class="tabs">
+          <button class="tab active" data-tab="upcoming">Upcoming</button>
+          <button class="tab" data-tab="completed">Completed</button>
+        </div>
+        <div id="reminders-list" class="list"></div>
+      </div>
+
+      <!-- Reminder Form -->
+      <div id="reminder-form-view" class="view">
+        <div class="detail-header">
+          <button id="cancel-reminder-form" class="icon-btn" aria-label="Cancel">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+          <h2>Set Reminder</h2>
+        </div>
+
+        <form id="reminder-form" class="form-container">
+          <div class="card">
+            <div class="form-group">
+              <label for="reminder-type">Type *</label>
+              <select id="reminder-type" required>
+                <option>Follow-up</option>
+                <option>Vaccination</option>
+                <option>Medicine Refill</option>
+                <option>Check-up</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="reminder-date">Date & Time *</label>
+              <input type="datetime-local" id="reminder-date" required>
+            </div>
+
+            <div class="form-group">
+              <label for="reminder-message">Message</label>
+              <div class="input-with-voice">
+                <textarea id="reminder-message" rows="3"></textarea>
+                <button type="button" class="voice-btn" data-target="reminder-message">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large">Save Reminder</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Sync Center View -->
+      <div id="sync-view" class="view">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+              <h3 style="margin: 0;">Sync Status</h3>
+              <p id="sync-status" style="margin: 0.5rem 0 0; color: #666; font-size: 0.875rem;">Checking...</p>
+            </div>
+            <button id="sync-all-btn" class="btn btn-primary">Sync Now</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Unsynced Records</h3>
+          <div id="unsynced-list" class="list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Export / Import</h3>
+          <div class="action-buttons">
+            <button id="export-json-btn" class="btn btn-secondary">Export JSON</button>
+            <button id="export-csv-btn" class="btn btn-secondary">Export CSV</button>
+            <label class="btn btn-secondary" style="margin: 0;">
+              Import JSON
+              <input type="file" id="import-json-input" accept=".json" style="display: none;">
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eligibility Wizard View -->
+      <div id="eligibility-view" class="view">
+        <div class="card">
+          <h2>Eligibility Check</h2>
+          <p style="color: #666; margin-bottom: 1.5rem;">Answer questions to check eligibility for health programs</p>
+
+          <div id="eligibility-steps">
+            <!-- Step 1 -->
+            <div class="eligibility-step active" data-step="1">
+              <h3>Step 1: Age Group</h3>
+              <div class="form-group">
+                <label>Select age group</label>
+                <select id="eligibility-age">
+                  <option value="">Select</option>
+                  <option value="infant">Infant (0-1 year)</option>
+                  <option value="child">Child (1-12 years)</option>
+                  <option value="teen">Teenager (13-18 years)</option>
+                  <option value="adult">Adult (19-60 years)</option>
+                  <option value="senior">Senior (60+ years)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="app.nextEligibilityStep(2)">Next</button>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="eligibility-step" data-step="2">
+              <h3>Step 2: Gender</h3>
+              <div class="form-group">
+                <label>Select gender</label>
+                <select id="eligibility-gender">
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="app.nextEligibilityStep(1)">Back</button>
+                <button class="btn btn-primary" onclick="app.nextEligibilityStep(3)">Next</button>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="eligibility-step" data-step="3">
+              <h3>Step 3: Conditions</h3>
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="eligibility-pregnant"> Pregnant
+                </label>
+                <label>
+                  <input type="checkbox" id="eligibility-chronic"> Chronic Disease
+                </label>
+                <label>
+                  <input type="checkbox" id="eligibility-disability"> Disability
+                </label>
+                <label>
+                  <input type="checkbox" id="eligibility-bpl"> Below Poverty Line
+                </label>
+              </div>
+              <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="app.nextEligibilityStep(2)">Back</button>
+                <button class="btn btn-primary" onclick="app.checkEligibility()">Check Eligibility</button>
+              </div>
+            </div>
+
+            <!-- Results -->
+            <div class="eligibility-step" data-step="4">
+              <h3>Eligibility Results</h3>
+              <div id="eligibility-results" style="margin: 1rem 0;"></div>
+              <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="app.nextEligibilityStep(1)">Start Over</button>
+                <button class="btn btn-primary" onclick="app.exportEligibility()">Export Results</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings View -->
+      <div id="settings-view" class="view">
+        <div class="card">
+          <h3>Language</h3>
+          <select id="language-select" class="form-control">
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <h3>Permissions</h3>
+          <div class="setting-item">
+            <span>Microphone Access</span>
+            <button id="request-mic-btn" class="btn btn-secondary">Test</button>
+          </div>
+          <div class="setting-item">
+            <span>Location Access</span>
+            <button id="request-location-btn" class="btn btn-secondary">Test</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Data Management</h3>
+          <button id="clear-data-btn" class="btn btn-danger btn-large">Clear All Data</button>
+          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #666;">This will delete all local records. Use Export first.</p>
+        </div>
+
+        <div class="card">
+          <button id="logout-btn" class="btn btn-secondary btn-large">Logout</button>
+        </div>
+
+        <div style="text-align: center; padding: 1rem; color: #999; font-size: 0.875rem;">
+          <p>Health Records PWA v1.0</p>
+          <p>Offline-first for rural healthcare</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="alert"></div>
+
+  <!-- Modal Dialog -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modal-title">Confirm</h3>
+      <p id="modal-message">Are you sure?</p>
+      <div class="action-buttons">
+        <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
